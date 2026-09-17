@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Stock Scanner",
+  "version": "1.0.0",
+  "description": "Watchlist, portfolio, projections and allocation for stocks and ETFs worldwide. One tab, no account, nothing collected.",
+  "host_permissions": [
+    "https://query1.finance.yahoo.com/*",
+    "https://query2.finance.yahoo.com/*",
+    "https://fc.yahoo.com/*"
+  ],
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Stock Scanner"
+  },
+  "icons": {
+    "128": "icon128.png"
+  }
+}
