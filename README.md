@@ -63,7 +63,7 @@ discover that.
 
 | | Why |
 | --- | --- |
-| `storage` | Your watchlist, holdings, comparison and theme. Nothing else uses it. |
+| `storage` | Your watchlist, groups, holdings, comparison and theme. Nothing else uses it. |
 | `query1/query2.finance.yahoo.com` | Quotes, candles, search, company profiles, option chains. |
 | `fc.yahoo.com` | Issues the session cookie that option chains require. |
 
@@ -115,6 +115,12 @@ It reads no page you visit, injects no content script, and talks to no host but 
   diversification the mix actually buys. See below.
 - **Themes** — a warm off-white light theme by default, plus a dark variant sharing the same
   palette. The choice persists and is applied before first paint, so there's no flash.
+- **Groups** — split the watchlist into named groups, like *India*, *Europe*, *EUR* or *Tech*.
+  Pick a group above the watchlist and every tab shows only that group: the watchlist, the
+  Compare and Allocation chips, the Projection table, and the Portfolio rows and totals. Pick
+  **All** to see everything again. See *About groups* below.
+- **Backup & move** — the button at the right of the tab bar. Save your setup to a file (or copy
+  it as text), then load it on another computer. See *Moving to another computer* below.
 
 
 ## What this is not
@@ -313,12 +319,57 @@ have fat tails, crashes and regime changes it does not reproduce, and a window c
 long bull run makes the whole fan look optimistic. It ignores fees, taxes and inflation. It
 is arithmetic on past prices — not a forecast, and not investment advice.
 
+## About groups
+
+A group is a named list of tickers. One ticker can be in many groups. Groups are shared by all
+tabs, so picking a group changes what every tab shows.
+
+- **Make a group** with **+ Group**. Give it a name and tick the tickers that belong in it.
+- **Add all from** fills a group in one click: by country (from the ticker's exchange suffix, for
+  example `.NS` is India) or by currency (from the live quote).
+- **Adding while a group is open** puts the ticker in that group too: the ☆ button on the Detail
+  tab, or a new holding on the Portfolio tab.
+- **The × on a row** removes the ticker from the open group only. Under **All**, it removes it
+  from the watchlist and from every group.
+- **Every ticker in a group is also in the watchlist.** Deleting a group keeps its tickers.
+- Compare and Allocation have a button to use the whole group at once (up to 8 tickers).
+- The Portfolio tab shows only the holdings in the group, with totals for those alone, and says
+  how many are hidden.
+
+Groups are saved with the rest of your setup, and the open group is remembered.
+
+## Moving to another computer
+
+Open **Backup & move** (right side of the tab bar). It has two steps.
+
+1. **Save a backup.** Tick what to include — watchlist and groups, Compare, Portfolio,
+   Allocation, theme and market — then **Download file** or **Copy as text**. The text is the
+   same backup, packed small, so you can mail it to yourself or keep it in a note.
+2. **Load a backup.** On the other computer, **Choose file…** or paste the text. The app shows
+   what is inside and when it was saved. Tick what to load, then pick:
+   - **Add to what I have** — keeps your tickers and groups and adds the new ones. Groups with
+     the same name are joined. If a holding is in both, the backup's numbers are used.
+   - **Replace what I have** — the ticked parts become exactly what is in the backup.
+
+Right after loading, an **Undo** button puts everything back as it was.
+
+The file is plain JSON (`stock-scanner-backup-YYYY-MM-DD.json`), so you can read it. Nothing is
+uploaded anywhere: the app only reads the file you pick and writes the file you download. The
+file holds your portfolio numbers, so keep it private if they are.
+
+Browser sync can also carry your setup (see below), but only while it is small and only between
+browsers signed in to the same account. A backup file always works.
+
 ## Where your data lives
 
 In `chrome.storage.sync`, so your watchlist and holdings follow your Chrome profile to any
 machine you are signed into. If sync is unavailable, or the payload outgrows its 8 KB
 per-item quota, it falls back to `chrome.storage.local` — a much larger budget that stays on
 one machine. Losing sync beats losing the edit.
+
+Every save carries a time stamp. On load the app reads both places and uses the newest copy, so
+an old copy left in sync never hides a newer one that had to go to local. The Backup & move
+panel says which place your setup is in right now.
 
 **Nothing is sent anywhere.** Not to a server, because there is no server; not to Yahoo, which
 only ever sees which ticker you asked about. Your cost basis, position sizes and allocation

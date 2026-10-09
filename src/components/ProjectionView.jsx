@@ -64,7 +64,7 @@ function BandTooltip({ active, payload, label, currency }) {
   );
 }
 
-export default function ProjectionView({ symbol, watchlist, onPickSymbol }) {
+export default function ProjectionView({ symbol, watchlist, groupName, onPickSymbol }) {
   const [showAll, setShowAll] = useState(false);
   const [lookback, setLookback] = useState('10y');
   const [amount, setAmount] = useState('10000');
@@ -504,15 +504,20 @@ export default function ProjectionView({ symbol, watchlist, onPickSymbol }) {
                 </p>
               )}
 
-              <div className="wl-toggle">
-                <button type="button" className="ghost-btn" onClick={() => setShowAll((v) => !v)}>
-                  {showAll ? 'Hide watchlist comparison' : `Run this across all ${watchlist.length} watchlist tickers`}
-                </button>
-              </div>
+              {watchlist.length > 0 && (
+                <div className="wl-toggle">
+                  <button type="button" className="ghost-btn" onClick={() => setShowAll((v) => !v)}>
+                    {showAll
+                      ? `Hide ${groupName ?? 'watchlist'} comparison`
+                      : `Run this across all ${watchlist.length} ${groupName ? `tickers in ${groupName}` : 'watchlist tickers'}`}
+                  </button>
+                </div>
+              )}
 
               {showAll && (
                 <WatchlistProjection
                   symbols={watchlist}
+                  groupName={groupName}
                   amount={amountNum}
                   years={years}
                   lookback={lookback}

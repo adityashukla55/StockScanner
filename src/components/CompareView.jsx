@@ -48,7 +48,7 @@ function CompareTooltip({ active, payload, label, range, colors }) {
   );
 }
 
-export default function CompareView({ symbols, onToggle, onClear, watchlist }) {
+export default function CompareView({ symbols, onToggle, onClear, watchlist, group, onUseGroup }) {
   const [range, setRange] = useState('1y');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -108,11 +108,18 @@ export default function CompareView({ symbols, onToggle, onClear, watchlist }) {
             </InfoTip>
           </h2>
         </div>
-        {symbols.length > 0 && (
-          <button type="button" className="ghost-btn" onClick={onClear}>
-            Clear all
-          </button>
-        )}
+        <div className="head-actions">
+          {group && watchlist.length > 0 && (
+            <button type="button" className="ghost-btn plain" onClick={onUseGroup}>
+              Compare all in {group.name}
+            </button>
+          )}
+          {symbols.length > 0 && (
+            <button type="button" className="ghost-btn" onClick={onClear}>
+              Clear all
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="chips">

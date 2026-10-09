@@ -23,7 +23,7 @@ const COLUMNS = [
   { key: 'probLoss', label: 'Chance of loss', hint: 'Modelled probability of ending below what you put in' },
 ];
 
-export default function WatchlistProjection({ symbols, amount, years, lookback }) {
+export default function WatchlistProjection({ symbols, groupName, amount, years, lookback }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -100,7 +100,7 @@ export default function WatchlistProjection({ symbols, amount, years, lookback }
   return (
     <section className="wl-projection">
       <div className="about-head">
-        <h3>The same model across your watchlist</h3>
+        <h3>The same model across {groupName ? `the group ${groupName}` : 'your watchlist'}</h3>
         {loading && <span className="text-dim tiny">Fitting {symbols.length} models…</span>}
       </div>
 

@@ -4,6 +4,7 @@ import { marketStatus } from './format.js';
 import { marketFor } from './markets.js';
 import MarketPicker from './components/MarketPicker.jsx';
 import AllocationView from './components/AllocationView.jsx';
+import BackupPanel from './components/BackupPanel.jsx';
 import CompareView from './components/CompareView.jsx';
 import PortfolioView from './components/PortfolioView.jsx';
 import ProjectionView from './components/ProjectionView.jsx';
@@ -11,6 +12,7 @@ import SearchBar from './components/SearchBar.jsx';
 import StockDetail from './components/StockDetail.jsx';
 import Watchlist from './components/Watchlist.jsx';
 import { save, settings } from './settings.js';
+import { addMissing, newGroupId, uniqueGroupName } from './groups.js';
 import { SPONSOR, sponsorConfigured } from './links.js';
 
 /**
@@ -64,6 +66,18 @@ export default function App() {
   const [status, setStatus] = useState(() => marketStatus());
   const [refreshKey, setRefreshKey] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [activeGroupId, setActiveGroupId] = useState(null);
+  const [storedIn, setStoredIn] = useState(null);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [undo, setUndo] = useState(null);
+
+  const activeGroup = groups.find((g) => g.id === activeGroupId) ?? null;
+  const pool = useMemo(() => (activeGroup ? activeGroup.symbols : symbols), [activeGroup, symbols]);
+  const visibleHoldings = useMemo(
+    () => (activeGroup ? holdings.filter((h) => activeGroup.symbols.includes(h.symbol)) : holdings),
+    [activeGroup, holdings],
+  );
   /**
    * Whose trading day the header is describing.
    *
@@ -111,9 +125,13 @@ export default function App() {
     if (state.holdings) setHoldings(state.holdings);
     if (state.picks) setPicks(state.picks);
     if (state.theme) setTheme(state.theme);
-    if (state.watchlist?.length) {
-      setSelected(state.watchlist[0]);
-      setProjectionSymbol(state.watchlist[0]);
+    if (state.groups) setGroups(state.groups);
+    setActiveGroupId(state.activeGroup ?? null);
+    const first =
+      state.groups?.find((g) => g.id === state.activeGroup)?.symbols[0] ?? state.watchlist?.[0];
+    if (first) {
+      setSelected(first);
+      setProjectionSymbol(first);
     }
   }, []);
 
@@ -147,16 +165,25 @@ export default function App() {
   useEffect(() => {
     if (!hydrated) return undefined;
 
-    const payload = { watchlist: symbols, compare: compareSymbols, holdings, theme, picks };
+    const payload = {
+      watchlist: symbols,
+      compare: compareSymbols,
+      holdings,
+      theme,
+      picks,
+      groups,
+      activeGroup: activeGroupId,
+    };
     pending.current = payload;
     setSaveStatus('saving');
 
     const attempt = () => {
       saveState(payload)
-        .then(() => {
+        .then((area) => {
           if (pending.current !== payload) return; // Superseded by a newer edit.
           pending.current = null;
           setSaveStatus('saved');
+          setStoredIn(area);
         })
         .catch(() => {
           if (pending.current !== payload) return;
@@ -169,7 +196,7 @@ export default function App() {
     saveTimer.current = setTimeout(attempt, SAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(saveTimer.current);
-  }, [hydrated, symbols, compareSymbols, holdings, theme, picks]);
+  }, [hydrated, symbols, compareSymbols, holdings, theme, picks, groups, activeGroupId]);
 
   /**
    * Flush an unsaved edit when the page goes away.
@@ -282,12 +309,33 @@ export default function App() {
     [],
   );
 
+  const addToGroup = useCallback((id, list) => {
+    setGroups((prev) => {
+      const group = prev.find((g) => g.id === id);
+      if (!group) return prev;
+      const next = addMissing(group.symbols, list);
+      return next === group.symbols ? prev : prev.map((g) => (g.id === id ? { ...g, symbols: next } : g));
+    });
+    setSymbols((prev) => addMissing(prev, list));
+  }, []);
+
+  const dropFromGroups = (symbol, onlyId = null) =>
+    setGroups((prev) =>
+      prev.map((g) =>
+        (onlyId == null || g.id === onlyId) && g.symbols.includes(symbol)
+          ? { ...g, symbols: g.symbols.filter((s) => s !== symbol) }
+          : g,
+      ),
+    );
+
   const addHolding = useCallback(
-    (symbol) =>
+    (symbol) => {
       setHoldings((prev) =>
         prev.some((h) => h.symbol === symbol) ? prev : [...prev, { symbol, shares: '', cost: '' }],
-      ),
-    [],
+      );
+      if (activeGroupId) addToGroup(activeGroupId, [symbol]);
+    },
+    [activeGroupId, addToGroup],
   );
 
   const updateHolding = (symbol, patch) =>
@@ -326,15 +374,97 @@ export default function App() {
     }
   };
 
-  const remove = (symbol) =>
+  const remove = (symbol) => {
+    if (activeGroup) {
+      dropFromGroups(symbol, activeGroup.id);
+      return;
+    }
+    dropFromGroups(symbol);
     setSymbols((prev) => {
       const next = prev.filter((s) => s !== symbol);
       if (symbol === selected) setSelected(next[0] ?? null);
       return next;
     });
+  };
 
-  const toggleWatch = (symbol) =>
-    setSymbols((prev) => (prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol]));
+  const toggleWatch = (symbol) => {
+    if (pool.includes(symbol)) {
+      if (activeGroup) dropFromGroups(symbol, activeGroup.id);
+      else {
+        dropFromGroups(symbol);
+        setSymbols((prev) => prev.filter((s) => s !== symbol));
+      }
+    } else if (activeGroup) {
+      addToGroup(activeGroup.id, [symbol]);
+    } else {
+      setSymbols((prev) => addMissing(prev, [symbol]));
+    }
+  };
+
+  const alignTo = (members) => {
+    if (!members.length) return;
+    if (!members.includes(selected)) setSelected(members[0]);
+    if (!members.includes(projectionSymbol)) setProjectionSymbol(members[0]);
+  };
+
+  const pickGroup = (id) => {
+    setActiveGroupId(id);
+    alignTo(groups.find((g) => g.id === id)?.symbols ?? []);
+  };
+
+  const createGroup = () => {
+    const id = newGroupId();
+    setGroups((prev) => [...prev, { id, name: uniqueGroupName(prev), symbols: [] }]);
+    setActiveGroupId(id);
+  };
+
+  const renameGroup = (id, name) =>
+    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, name } : g)));
+
+  const finishGroup = (id) => {
+    setGroups((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, name: g.name.trim() || uniqueGroupName(prev, 'Group') } : g)),
+    );
+    if (id === activeGroupId) alignTo(groups.find((g) => g.id === id)?.symbols ?? []);
+  };
+
+  const deleteGroup = (id) => {
+    setGroups((prev) => prev.filter((g) => g.id !== id));
+    setActiveGroupId(null);
+  };
+
+  const toggleMember = (id, symbol) => {
+    if (groups.find((g) => g.id === id)?.symbols.includes(symbol)) dropFromGroups(symbol, id);
+    else addToGroup(id, [symbol]);
+  };
+
+  const groupCandidates = useMemo(
+    () => addMissing(symbols, holdings.map((h) => h.symbol)),
+    [symbols, holdings],
+  );
+
+  const currentState = () => ({
+    watchlist: symbols,
+    compare: compareSymbols,
+    holdings,
+    picks,
+    theme,
+    groups,
+    activeGroup: activeGroupId,
+  });
+
+  const importBackup = ({ state, settings: imported }) => {
+    setUndo({ state: currentState(), market });
+    applyState(state);
+    if (imported?.market) chooseMarket(imported.market);
+  };
+
+  const undoImport = () => {
+    if (!undo) return;
+    applyState(undo.state);
+    chooseMarket(undo.market);
+    setUndo(null);
+  };
 
   // Extension storage is fast but asynchronous, so there is a frame or two
   // before a setup arrives. Showing the defaults in that gap would look like
@@ -431,11 +561,30 @@ export default function App() {
           Allocation
           {picks.length > 0 && <span className="pill">{picks.length}</span>}
         </button>
+        <button
+          type="button"
+          className="views-backup"
+          onClick={() => setBackupOpen(true)}
+          title="Save your setup to a file, or load it on another computer"
+        >
+          ⇅ Backup &amp; move
+        </button>
       </nav>
 
       <main className="layout">
         <Watchlist
-          symbols={symbols}
+          symbols={pool}
+          total={symbols.length}
+          groups={groups}
+          activeGroup={activeGroup}
+          candidates={groupCandidates}
+          onPickGroup={pickGroup}
+          onCreateGroup={createGroup}
+          onRenameGroup={renameGroup}
+          onFinishGroup={finishGroup}
+          onDeleteGroup={deleteGroup}
+          onToggleMember={toggleMember}
+          onAddMembers={addToGroup}
           quotes={quotes}
           selected={view === 'detail' ? selected : view === 'projection' ? projectionSymbol : null}
           compared={
@@ -462,7 +611,8 @@ export default function App() {
           <StockDetail
             symbol={selected}
             quote={selected ? quotes[selected] : null}
-            inWatchlist={symbols.includes(selected)}
+            inWatchlist={pool.includes(selected)}
+            listName={activeGroup?.name}
             onToggleWatch={toggleWatch}
             onSelectSymbol={setSelected}
             refreshKey={refreshKey}
@@ -471,14 +621,18 @@ export default function App() {
         {view === 'compare' && (
           <CompareView
             symbols={compareSymbols}
-            watchlist={symbols}
+            watchlist={pool}
+            group={activeGroup}
+            onUseGroup={() => setCompareSymbols(pool.slice(0, MAX_COMPARE))}
             onToggle={toggleCompare}
             onClear={() => setCompareSymbols([])}
           />
         )}
         {view === 'portfolio' && (
           <PortfolioView
-            holdings={holdings}
+            holdings={visibleHoldings}
+            hiddenCount={holdings.length - visibleHoldings.length}
+            groupName={activeGroup?.name}
             quotes={quotes}
             onUpdate={updateHolding}
             onRemove={removeHolding}
@@ -487,12 +641,19 @@ export default function App() {
         {view === 'projection' && (
           <ProjectionView
             symbol={projectionSymbol}
-            watchlist={symbols}
+            watchlist={pool}
+            groupName={activeGroup?.name}
             onPickSymbol={setProjectionSymbol}
           />
         )}
         {view === 'allocation' && (
-          <AllocationView watchlist={symbols} picks={picks} onPicksChange={setPicks} />
+          <AllocationView
+            watchlist={pool}
+            group={activeGroup}
+            onUseGroup={() => setPicks(pool.slice(0, 8))}
+            picks={picks}
+            onPicksChange={setPicks}
+          />
         )}
       </main>
 
@@ -509,6 +670,18 @@ export default function App() {
           </a>
         )}
       </footer>
+
+      {backupOpen && (
+        <BackupPanel
+          current={currentState()}
+          settings={{ market }}
+          storedIn={storedIn}
+          canUndo={undo != null}
+          onApply={importBackup}
+          onUndo={undoImport}
+          onClose={() => setBackupOpen(false)}
+        />
+      )}
     </div>
   );
 }

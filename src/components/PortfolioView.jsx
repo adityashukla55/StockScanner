@@ -9,7 +9,7 @@ const num = (value) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export default function PortfolioView({ holdings, quotes, onUpdate, onRemove }) {
+export default function PortfolioView({ holdings, hiddenCount = 0, groupName, quotes, onUpdate, onRemove }) {
   const rows = useMemo(
     () =>
       holdings.map((h, i) => {
@@ -128,9 +128,20 @@ export default function PortfolioView({ holdings, quotes, onUpdate, onRemove }) 
         </div>
       </header>
 
+      {groupName && (
+        <p className="group-filter-note">
+          Showing only the group <strong>{groupName}</strong>
+          {hiddenCount > 0 &&
+            ` · ${hiddenCount} other ${hiddenCount === 1 ? 'holding is' : 'holdings are'} hidden`}
+          . Pick <em>All</em> in the watchlist to see everything.
+        </p>
+      )}
+
       {holdings.length === 0 ? (
         <div className="chart-placeholder">
-          Search for a ticker above to add your first holding.
+          {groupName
+            ? `No holdings in ${groupName} yet. Search above to add one — it joins this group too.`
+            : 'Search for a ticker above to add your first holding.'}
         </div>
       ) : (
         <>

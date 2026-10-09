@@ -32,7 +32,7 @@ const OBJECTIVES = [
   ['return', 'Highest past return', 'Whatever returned most — this collapses into a single holding'],
 ];
 
-export default function AllocationView({ watchlist, picks, onPicksChange }) {
+export default function AllocationView({ watchlist, picks, onPicksChange, group, onUseGroup }) {
   const [lookback, setLookback] = useState('5y');
   const [amount, setAmount] = useState('25000');
   const [years, setYears] = useState(10);
@@ -165,6 +165,11 @@ export default function AllocationView({ watchlist, picks, onPicksChange }) {
             </InfoTip>
           </h2>
         </div>
+        {group && watchlist.length > 0 && (
+          <button type="button" className="ghost-btn plain" onClick={onUseGroup}>
+            Use all in {group.name}
+          </button>
+        )}
       </header>
 
       <div className="chips">

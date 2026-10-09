@@ -14,7 +14,7 @@ function rangeReturn(candles) {
   return first ? ((last - first) / first) * 100 : null;
 }
 
-export default function StockDetail({ symbol, quote, inWatchlist, onToggleWatch, onSelectSymbol, refreshKey }) {
+export default function StockDetail({ symbol, quote, inWatchlist, listName, onToggleWatch, onSelectSymbol, refreshKey }) {
   const [range, setRange] = useState('1y');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -99,7 +99,7 @@ export default function StockDetail({ symbol, quote, inWatchlist, onToggleWatch,
           className={`watch-toggle ${inWatchlist ? 'on' : ''}`}
           onClick={() => onToggleWatch(symbol)}
         >
-          {inWatchlist ? '★ In watchlist' : '☆ Add to watchlist'}
+          {inWatchlist ? `★ In ${listName ?? 'watchlist'}` : `☆ Add to ${listName ?? 'watchlist'}`}
         </button>
       </header>
 
