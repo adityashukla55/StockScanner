@@ -94,10 +94,33 @@ It reads no page you visit, injects no content script, and talks to no host but 
   tickers from the watchlist chips, or search to add anything else; the ranked table below
   the chart sorts by return over the range. A symbol that listed partway through the range
   (say ARM over 5Y) simply starts its line at its IPO.
-- **Portfolio** — enter shares owned, and optionally a cost basis per share, to get live
-  market value, today's move, total gain and weights, with an allocation donut. Holdings
-  persist to disk. Total gain counts only the holdings that have a cost basis, and
-  says so when the portfolio is half-filled, rather than reporting a misleading return.
+- **Portfolio** — you enter what your broker shows, and the app works out the rest. Per holding
+  there are three numbers to type:
+  - **Buy price** — the price per share your broker charged.
+  - **Fee** — the broker fee for that buy.
+  - **Total paid** — all the money you paid, fee included.
+
+  You never type a share count. Yahoo's price and your broker's price are not the same, so a
+  share count worked out from Yahoo would be wrong. Instead:
+  `shares = (total paid − fee) ÷ buy price`. Fractional shares are fine (savings plans).
+
+  Example: Apple on XETRA, buy price 300,40, fee 1, total paid 1001 → 3.3289 shares.
+
+  **Price now** starts at your buy price and then moves with the market, by Yahoo's change since
+  then. So right after buying, your gain is minus the fee — not a made-up profit from the gap
+  between Yahoo and your broker. If you bought earlier, or want to match your broker exactly,
+  type the price your broker shows now; it follows the market from there. Yahoo's price is
+  shown small under it for reference.
+
+  There is no "today" column: a daily move from Yahoo does not match your broker's prices, so
+  the tab shows only what counts — value, total paid, and gain or loss.
+
+  `value = shares × price now`, `gain = value − total paid`. Totals are kept per currency,
+  with an allocation donut for each. Numbers can use a dot or a comma for decimals (`612.45`
+  or `612,45`), and thousands marks are fine too (`1,234.56` or `1.234,56`). Holdings saved
+  before this change are converted: buy price = old cost, total paid = shares × cost, fee 0.
+- **Removing a holding** — the × at the end of each row. It stays pinned at the right edge, so
+  it is visible even when the table has to scroll on a small window.
 - **Projection** — "if I invest $X today, there's a P% chance it's worth at least $Y in Z
   years", with a fan chart of percentile bands, a table of outcomes, and a reverse mode that
   takes a target value and returns its odds. See the caveats below.

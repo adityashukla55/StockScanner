@@ -15,6 +15,7 @@
  * between the two without translation.
  */
 import { browserApi } from './browser.js';
+import { parseAmount } from './format.js';
 import { MAX_GROUPS, MAX_GROUP_NAME, newGroupId } from './groups.js';
 const KEY = 'state';
 const EMPTY = {
@@ -64,11 +65,24 @@ export function sanitize(input) {
   state.holdings = Array.isArray(input.holdings)
     ? input.holdings
         .filter((h) => h && typeof h.symbol === 'string' && h.symbol.length <= 12)
-        .map((h) => ({
-          symbol: h.symbol,
-          shares: Number(h.shares) || 0,
-          cost: Number(h.cost) || 0,
-        }))
+        .map((h) => {
+          const oldCost = parseAmount(h.cost);
+          const oldShares = parseAmount(h.shares);
+          const isNew = 'buy' in h || 'paid' in h || 'fee' in h;
+          const buy = isNew ? parseAmount(h.buy) : oldCost;
+          const paid = isNew ? parseAmount(h.paid) : oldCost * oldShares;
+          const base = parseAmount(h.base);
+          const mine = parseAmount(h.mine) || (h.date && base ? oldCost : 0);
+          return {
+            symbol: h.symbol,
+            buy,
+            fee: parseAmount(h.fee),
+            paid,
+            shares: buy > 0 && paid > 0 ? 0 : oldShares,
+            mine,
+            base: mine ? base : 0,
+          };
+        })
         .slice(0, 100)
     : null;
 

@@ -331,7 +331,7 @@ export default function App() {
   const addHolding = useCallback(
     (symbol) => {
       setHoldings((prev) =>
-        prev.some((h) => h.symbol === symbol) ? prev : [...prev, { symbol, shares: '', cost: '' }],
+        prev.some((h) => h.symbol === symbol) ? prev : [...prev, { symbol, buy: '', fee: '', paid: '' }],
       );
       if (activeGroupId) addToGroup(activeGroupId, [symbol]);
     },

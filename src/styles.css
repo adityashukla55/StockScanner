@@ -237,7 +237,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .remove:hover { background: color-mix(in srgb, var(--down) 15%, transparent); color: var(--down); }
 
 /* ---------- detail ---------- */
-.detail { min-height: 640px; }
+.detail { min-height: 640px; min-width: 0; }
 .detail-empty { display: grid; place-items: center; text-align: center; color: var(--text-dim); }
 .detail-empty h2 { color: var(--text); margin-bottom: 6px; }
 .detail-empty p { max-width: 420px; margin: 0 auto; }
@@ -369,7 +369,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 
 /* ---------- portfolio ---------- */
 .totals {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px; margin-top: 16px;
   background: var(--line); border: 1px solid var(--line); border-radius: var(--radius);
   overflow: hidden;
@@ -382,9 +382,11 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .note { font-size: 12px; color: var(--text-dim); margin: 10px 2px 0; }
 
 .portfolio-body {
-  display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 22px;
+  display: flex; flex-wrap: wrap; gap: 22px 28px;
   align-items: start; margin-top: 18px;
 }
+.portfolio-body > .table-scroll { flex: 1 1 100%; }
+.portfolio-body > .allocation { flex: 0 1 240px; min-width: 200px; }
 
 .holdings-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .holdings-table th {
@@ -411,10 +413,9 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .cell-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .row-remove {
-  width: 22px; height: 22px; line-height: 1;
-  border: 0; border-radius: 6px; background: transparent; color: var(--text-dim); opacity: 0.5;
+  width: 26px; height: 26px; line-height: 1; font-size: 16px;
+  border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--text-dim);
 }
-.holdings-table tr:hover .row-remove { opacity: 1; }
 .row-remove:hover { background: color-mix(in srgb, var(--down) 15%, transparent); color: var(--down); }
 
 .allocation h3, .projection h3, .model-facts h3 {
@@ -497,9 +498,6 @@ button { font: inherit; cursor: pointer; color: inherit; }
 }
 .disclaimer strong { color: var(--text); }
 
-@media (max-width: 1100px) {
-  .portfolio-body { grid-template-columns: 1fr; }
-}
 
 /* The holdings table carries nine columns; keep the identity column readable. */
 .holdings-table td:first-child { min-width: 158px; }
@@ -508,7 +506,16 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .cell-input { width: 76px; }
 
 .table-scroll { min-width: 0; overflow-x: auto; }
-.table-scroll .holdings-table { min-width: 640px; }
+.table-scroll .holdings-table { min-width: 700px; }
+.cell-input.narrow { width: 64px; }
+.shares-cell { white-space: nowrap; font-weight: 600; }
+.cell-input.own { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--panel); }
+.price-src { display: block; margin-top: 3px; font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
+.price-src .tiny-link { font-size: 10.5px; padding: 0 0 0 6px; font-weight: 600; }
+.holdings-table th:last-child, .holdings-table td:last-child {
+  position: sticky; right: 0; z-index: 1; background: var(--panel); padding-left: 4px; padding-right: 2px;
+}
+.holdings-table tr:hover td:last-child { background: var(--panel); }
 
 /* ---------- about / profile panel ---------- */
 .about { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
@@ -761,10 +768,20 @@ button { font: inherit; cursor: pointer; color: inherit; }
    than one. With a single currency the header would just be noise. */
 .totals-currency {
   grid-column: 1 / -1;
-  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-  margin-bottom: -4px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 15px;
+  background: var(--panel-2);
+}
+.currency-code {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--accent); color: #fff;
+}
+.currency-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.currency-count { margin-left: auto; font-size: 12px; color: var(--text-dim); }
+
+@media (max-width: 520px) {
+  .totals { grid-template-columns: 1fr; }
 }
 
 /* --- the ⓘ beside a tab heading, and its panel --- */

@@ -20,6 +20,62 @@ const SUBUNIT = { GBp: 'p', GBX: 'p', ZAc: 'c', ILA: 'ag' };
 
 const cache = new Map();
 
+const LOCALE_DECIMAL = (() => {
+  try {
+    return new Intl.NumberFormat().formatToParts(1.5).find((p) => p.type === 'decimal')?.value ?? '.';
+  } catch {
+    return '.';
+  }
+})();
+
+export function parseAmount(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  let text = String(value ?? '').replace(/[^\d.,-]/g, '');
+  if (!text) return 0;
+
+  const dots = text.split('.').length - 1;
+  const commas = text.split(',').length - 1;
+
+  if (dots && commas) {
+    const decimal = text.lastIndexOf('.') > text.lastIndexOf(',') ? '.' : ',';
+    const group = decimal === '.' ? ',' : '.';
+    text = text.split(group).join('').replace(decimal, '.');
+  } else if (dots || commas) {
+    const sep = dots ? '.' : ',';
+    const digitsAfter = text.length - text.lastIndexOf(sep) - 1;
+    const grouping = dots + commas > 1 || (digitsAfter === 3 && sep !== LOCALE_DECIMAL);
+    text = grouping ? text.split(sep).join('') : text.replace(sep, '.');
+  }
+
+  const n = Number(text);
+  return Number.isFinite(n) ? n : 0;
+}
+
+const SUBUNIT_NAMES = { GBp: 'British pence', GBX: 'British pence', ZAc: 'South African cents', ILA: 'Israeli agorot' };
+let currencyNames = null;
+
+export function currencyName(code) {
+  if (!code) return '';
+  if (SUBUNIT_NAMES[code]) return SUBUNIT_NAMES[code];
+  try {
+    currencyNames ??= new Intl.DisplayNames(['en'], { type: 'currency' });
+    const name = currencyNames.of(code);
+    return name && name !== code ? name : '';
+  } catch {
+    return '';
+  }
+}
+
+export function amountText(n) {
+  if (!(n > 0)) return '';
+  const digits = n < 1 ? 4 : 2;
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    useGrouping: false,
+  });
+}
+
 function formatter(currency, digits) {
   const key = currency + ':' + digits;
   if (cache.has(key)) return cache.get(key);
