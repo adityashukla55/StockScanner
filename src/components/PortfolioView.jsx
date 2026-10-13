@@ -7,7 +7,7 @@ import InfoTip from './InfoTip.jsx';
 const shown = (value) => (value === 0 || value == null ? '' : value);
 
 const shareText = (n) =>
-  n > 0 ? n.toLocaleString(undefined, { maximumFractionDigits: n < 10 ? 4 : 3 }) : '—';
+  n > 0 ? n.toLocaleString(undefined, { maximumFractionDigits: n < 1 ? 6 : n < 10 ? 4 : 3 }) : '—';
 
 export default function PortfolioView({ holdings, hiddenCount = 0, groupName, quotes, onUpdate, onRemove }) {
   const [draft, setDraft] = useState(null);
@@ -42,11 +42,12 @@ export default function PortfolioView({ holdings, hiddenCount = 0, groupName, qu
     () =>
       holdings.map((h, i) => {
         const quote = quotes[h.symbol];
-        const buy = parseAmount(h.buy);
+        const invested = parseAmount(h.invested);
         const fee = parseAmount(h.fee);
-        const paid = parseAmount(h.paid);
-        const counted = buy > 0 && paid > fee;
-        const shares = counted ? (paid - fee) / buy : parseAmount(h.shares);
+        const buy = parseAmount(h.buy);
+        const counted = buy > 0 && invested > 0;
+        const shares = counted ? invested / buy : parseAmount(h.shares);
+        const paid = invested + fee;
 
         const yahoo = quote?.price ?? null;
         const mine = parseAmount(h.mine);
@@ -56,18 +57,18 @@ export default function PortfolioView({ holdings, hiddenCount = 0, groupName, qu
         const price = own ? (tracks ? mine * (yahoo / base) : mine) : yahoo;
 
         const value = price != null ? shares * price : null;
-        const costTotal = paid > 0 && shares > 0 ? paid : null;
+        const costTotal = counted ? paid : null;
         const gain = value != null && costTotal != null ? value - costTotal : null;
 
         return {
           symbol: h.symbol,
           holding: h,
-          buyRaw: shown(h.buy),
+          investedRaw: shown(h.invested),
           feeRaw: shown(h.fee),
-          paidRaw: shown(h.paid),
+          buyRaw: shown(h.buy),
+          paid,
           counted,
           oldShares: !counted && shares > 0,
-          feeTooBig: paid > 0 && fee >= paid,
           yahoo,
           own,
           shares,
@@ -139,12 +140,11 @@ export default function PortfolioView({ holdings, hiddenCount = 0, groupName, qu
               <p>
                 You enter what your broker shows. Shares and gain are worked out from it:
               </p>
-              <span className="formula">shares = (total paid − fee) ÷ buy price</span>
+              <span className="formula">total paid = invested + fee    shares = invested ÷ price then</span>
               <span className="formula">value = shares × price now    gain = value − total paid</span>
               <p>
-                <strong>Price now</strong> starts at your buy price and then moves with the market,
-                by Yahoo's change since then. Type your broker's current price any time to correct
-                it:
+                <strong>Price now</strong> starts at the price then and moves with the market, by
+                Yahoo's change since then. Type any price to see what your shares are worth at it:
               </p>
               <span className="formula">price now = your price × (Yahoo now ÷ Yahoo when you typed it)</span>
               <p>
@@ -207,7 +207,7 @@ export default function PortfolioView({ holdings, hiddenCount = 0, groupName, qu
                   {g.gain == null ? '—' : signedMoney(g.gain, g.currency)}
                 </span>
                 <span className={`total-sub ${g.gain >= 0 ? 'up' : 'down'}`}>
-                  {g.gain == null ? 'add buy price and total paid' : signedPct(g.gainPct)}
+                  {g.gain == null ? 'add invested and price then' : signedPct(g.gainPct)}
                 </span>
               </div>
             </div>
@@ -222,21 +222,22 @@ export default function PortfolioView({ holdings, hiddenCount = 0, groupName, qu
           )}
 
           <p className="note">
-            Enter what your broker shows: buy price per share, fee, and total paid. Shares are
-            worked out for you. Price now starts at your buy price and moves with the market. If
-            you bought earlier, type today's price from your broker in Price now.
+            Enter the money you put into shares (invested), the broker fee, and the price of 1
+            share when you bought (price then). Shares = invested ÷ price then. Price now starts
+            at the price then and follows the market. Type any price there, for example from your
+            broker a week later, to see what your shares are worth.
           </p>
 
           {rows.some((r) => r.oldShares) && (
             <p className="note warn-note">
-              Some holdings still use a share count from before. Add their buy price and total
-              paid to work out the real shares.
+              Some holdings still use a share count from before. Add their invested amount and
+              price then to work out the real shares.
             </p>
           )}
 
           {groups.some((g) => g.partialBasis) && (
             <p className="note">
-              Total gain covers only the holdings with buy price and total paid filled in.
+              Total gain covers only the holdings with invested and price then filled in.
             </p>
           )}
 
@@ -246,11 +247,12 @@ export default function PortfolioView({ holdings, hiddenCount = 0, groupName, qu
               <thead>
                 <tr>
                   <th>Symbol</th>
-                  <th className="num" title="Price per share your broker charged">Buy price</th>
+                  <th className="num" title="Money that went into shares, without the fee">Invested</th>
                   <th className="num" title="Broker fee for this buy">Fee</th>
-                  <th className="num" title="All the money you paid, fee included">Total paid</th>
-                  <th className="num" title="(Total paid − fee) ÷ buy price">Shares</th>
-                  <th className="num">Price now</th>
+                  <th className="num" title="Invested + fee">Total paid</th>
+                  <th className="num" title="Price of 1 share when you bought">Price then</th>
+                  <th className="num" title="Invested ÷ price then">Shares</th>
+                  <th className="num" title="Price of 1 share now, or any price you want to try">Price now</th>
                   <th className="num">Value</th>
                   <th className="num">Gain</th>
                   <th aria-label="Remove" />
@@ -260,20 +262,22 @@ export default function PortfolioView({ holdings, hiddenCount = 0, groupName, qu
                 {rows.map((r) => (
                   <tr key={r.symbol}>
                     <td>
-                      <span className="tip-dot" style={{ background: r.color }} />
-                      <span className="holding-id">
-                        <span className="ticker">{r.symbol}</span>
-                        <span className="co-name">{r.name}</span>
-                      </span>
+                      <div className="holding-cell">
+                        <span className="tip-dot" style={{ background: r.color }} />
+                        <span className="holding-id">
+                          <span className="ticker">{r.symbol}</span>
+                          <span className="co-name">{r.name}</span>
+                        </span>
+                      </div>
                     </td>
                     <td className="num">
                       <input
                         type="text"
                         inputMode="decimal"
                         className="cell-input"
-                        value={r.buyRaw}
-                        onChange={(e) => changeBuy(r.holding, e.target.value)}
-                        aria-label={`Buy price per share of ${r.symbol}`}
+                        value={r.investedRaw}
+                        onChange={(e) => onUpdate(r.symbol, { invested: e.target.value })}
+                        aria-label={`Money invested in ${r.symbol}, without fee`}
                         placeholder="—"
                       />
                     </td>
@@ -288,22 +292,20 @@ export default function PortfolioView({ holdings, hiddenCount = 0, groupName, qu
                         placeholder="0"
                       />
                     </td>
+                    <td className="num calc-cell">{r.paid > 0 ? money(r.paid, r.currency) : '—'}</td>
                     <td className="num">
                       <input
                         type="text"
                         inputMode="decimal"
                         className="cell-input"
-                        value={r.paidRaw}
-                        onChange={(e) => onUpdate(r.symbol, { paid: e.target.value })}
-                        aria-label={`Total paid for ${r.symbol}`}
+                        value={r.buyRaw}
+                        onChange={(e) => changeBuy(r.holding, e.target.value)}
+                        aria-label={`Price of 1 share of ${r.symbol} when you bought`}
                         placeholder="—"
                       />
                     </td>
-                    <td
-                      className={`num shares-cell ${r.feeTooBig ? 'down' : ''}`}
-                      title={r.feeTooBig ? 'The fee must be less than the total paid' : undefined}
-                    >
-                      {r.feeTooBig ? 'check fee' : shareText(r.shares)}
+                    <td className="num calc-cell">
+                      {shareText(r.shares)}
                       {r.oldShares && <span className="price-src">from before</span>}
                     </td>
                     <td className="num">

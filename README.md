@@ -96,29 +96,31 @@ It reads no page you visit, injects no content script, and talks to no host but 
   (say ARM over 5Y) simply starts its line at its IPO.
 - **Portfolio** — you enter what your broker shows, and the app works out the rest. Per holding
   there are three numbers to type:
-  - **Buy price** — the price per share your broker charged.
+  - **Invested** — the money that went into shares, without the fee.
   - **Fee** — the broker fee for that buy.
-  - **Total paid** — all the money you paid, fee included.
+  - **Price then** — the price of 1 share when you bought.
 
-  You never type a share count. Yahoo's price and your broker's price are not the same, so a
-  share count worked out from Yahoo would be wrong. Instead:
-  `shares = (total paid − fee) ÷ buy price`. Fractional shares are fine (savings plans).
+  You never type a share count. The app works it out:
+  `total paid = invested + fee` and `shares = invested ÷ price then`. Fractional shares are
+  fine (savings plans).
 
-  Example: Apple on XETRA, buy price 300,40, fee 1, total paid 1001 → 3.3289 shares.
+  Example: you invest €24, the fee is €1, so you paid €25. One share cost €300, so you own
+  24 ÷ 300 = 0.08 shares.
 
-  **Price now** starts at your buy price and then moves with the market, by Yahoo's change since
-  then. So right after buying, your gain is minus the fee — not a made-up profit from the gap
-  between Yahoo and your broker. If you bought earlier, or want to match your broker exactly,
-  type the price your broker shows now; it follows the market from there. Yahoo's price is
-  shown small under it for reference.
+  **Price now** starts at the price then and moves with the market, by Yahoo's change since
+  then. Type any price there — for example what your broker shows a week later — to see what
+  your shares are worth at it. In the example, a price now of €350 gives a value of
+  0.08 × 350 = €28 and a gain of €28 − €25 = **+€3 (+12%)**. Right after buying, the gain is
+  minus the fee, never a made-up profit from the gap between Yahoo and your broker. Yahoo's
+  price is shown small under Price now for reference.
 
   There is no "today" column: a daily move from Yahoo does not match your broker's prices, so
   the tab shows only what counts — value, total paid, and gain or loss.
 
   `value = shares × price now`, `gain = value − total paid`. Totals are kept per currency,
   with an allocation donut for each. Numbers can use a dot or a comma for decimals (`612.45`
-  or `612,45`), and thousands marks are fine too (`1,234.56` or `1.234,56`). Holdings saved
-  before this change are converted: buy price = old cost, total paid = shares × cost, fee 0.
+  or `612,45`), and thousands marks are fine too (`1,234.56` or `1.234,56`). Holdings saved by
+  older versions are converted by themselves, so the share count stays the same.
 - **Removing a holding** — the × at the end of each row. It stays pinned at the right edge, so
   it is visible even when the table has to scroll on a small window.
 - **Projection** — "if I invest $X today, there's a P% chance it's worth at least $Y in Z
@@ -136,6 +138,9 @@ It reads no page you visit, injects no content script, and talks to no host but 
   over the chosen horizon. Unlike the other tabs this one models the holdings *together*,
   using their covariance, so the volatility it reports accounts for how much (or how little)
   diversification the mix actually buys. See below.
+
+  Each outcome also shows its **yearly rate**: the steady growth per year that would give the
+  same end result (for example +207.54% over 10 years is +11.89% a year).
 - **Themes** — a warm off-white light theme by default, plus a dark variant sharing the same
   palette. The choice persists and is applied before first paint, so there's no flash.
 - **Groups** — split the watchlist into named groups, like *India*, *Europe*, *EUR* or *Tech*.

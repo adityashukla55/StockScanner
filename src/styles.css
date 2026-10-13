@@ -398,7 +398,8 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .holdings-table td { padding: 8px; border-bottom: 1px solid var(--line); }
 .holdings-table tr:last-child td { border-bottom: 0; }
 .holdings-table td.num { text-align: right; }
-.holdings-table td:first-child { display: flex; align-items: center; gap: 8px; }
+.holdings-table td { vertical-align: middle; }
+.holding-cell { display: flex; align-items: center; gap: 8px; }
 .holdings-table .strong { font-weight: 650; }
 .holding-id { display: grid; min-width: 0; }
 .holding-id .co-name { max-width: 170px; }
@@ -508,7 +509,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .table-scroll { min-width: 0; overflow-x: auto; }
 .table-scroll .holdings-table { min-width: 700px; }
 .cell-input.narrow { width: 64px; }
-.shares-cell { white-space: nowrap; font-weight: 600; }
+.calc-cell { white-space: nowrap; font-weight: 600; }
 .cell-input.own { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--panel); }
 .price-src { display: block; margin-top: 3px; font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
 .price-src .tiny-link { font-size: 10.5px; padding: 0 0 0 6px; font-weight: 600; }
@@ -709,7 +710,8 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .alloc-actions .ghost-btn.on:hover { color: var(--accent); border-color: var(--accent); }
 
 .outcome-title { margin: 26px 0 8px !important; }
-.outcomes-table.wide { max-width: 560px; }
+.outcomes-table.wide { max-width: 720px; }
+.outcomes-table .rate-cell { font-weight: 600; white-space: nowrap; }
 
 /* ---------- setup sharing ---------- */
 

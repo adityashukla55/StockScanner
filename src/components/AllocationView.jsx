@@ -21,6 +21,11 @@ const LOOKBACKS = [
 
 const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
 
+const yearlyRate = (value, amount, years) =>
+  value > 0 && amount > 0 && years > 0 ? (value / amount) ** (1 / years) - 1 : null;
+
+const perYear = (rate) => (rate == null ? '—' : `${signedPct(rate * 100)} a year`);
+
 /**
  * "Best" has to be said out loud, because these three disagree — the highest
  * return is always one holding at 100%, and the steadiest is usually the
@@ -101,10 +106,10 @@ export default function AllocationView({ watchlist, picks, onPicksChange, group,
     const args = { amount: amountNum, drift, vol: yours.vol, years };
     return {
       summary: projectionSummary(args),
-      bands: [0.9, 0.75, 0.5, 0.25, 0.1].map((p) => ({
-        probability: p,
-        value: valueWithChanceOfExceeding({ ...args, probability: p }),
-      })),
+      bands: [0.9, 0.75, 0.5, 0.25, 0.1].map((p) => {
+        const value = valueWithChanceOfExceeding({ ...args, probability: p });
+        return { probability: p, value, rate: yearlyRate(value, amountNum, years) };
+      }),
     };
   }, [yours, amountNum, years]);
 
@@ -337,8 +342,9 @@ export default function AllocationView({ watchlist, picks, onPicksChange, group,
                   <td className="prob">{(b.probability * 100).toFixed(0)}% chance of at least</td>
                   <td className="num strong">{money0(b.value, unit)}</td>
                   <td className={`num ${b.value >= amountNum ? 'up' : 'down'}`}>
-                    {signedPct(((b.value - amountNum) / amountNum) * 100)}
+                    {signedPct(((b.value - amountNum) / amountNum) * 100)} in total
                   </td>
+                  <td className={`num rate-cell ${b.rate >= 0 ? 'up' : 'down'}`}>{perYear(b.rate)}</td>
                 </tr>
               ))}
             </tbody>

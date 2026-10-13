@@ -68,17 +68,23 @@ export function sanitize(input) {
         .map((h) => {
           const oldCost = parseAmount(h.cost);
           const oldShares = parseAmount(h.shares);
-          const isNew = 'buy' in h || 'paid' in h || 'fee' in h;
-          const buy = isNew ? parseAmount(h.buy) : oldCost;
-          const paid = isNew ? parseAmount(h.paid) : oldCost * oldShares;
+          const fee = parseAmount(h.fee);
+          const hasInvested = 'invested' in h;
+          const hasPaid = 'buy' in h || 'paid' in h || 'fee' in h;
+          const buy = hasInvested || hasPaid ? parseAmount(h.buy) : oldCost;
+          const invested = hasInvested
+            ? parseAmount(h.invested)
+            : hasPaid
+              ? Math.max(parseAmount(h.paid) - fee, 0)
+              : oldCost * oldShares;
           const base = parseAmount(h.base);
           const mine = parseAmount(h.mine) || (h.date && base ? oldCost : 0);
           return {
             symbol: h.symbol,
+            invested,
+            fee,
             buy,
-            fee: parseAmount(h.fee),
-            paid,
-            shares: buy > 0 && paid > 0 ? 0 : oldShares,
+            shares: buy > 0 && invested > 0 ? 0 : oldShares,
             mine,
             base: mine ? base : 0,
           };
