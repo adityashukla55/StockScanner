@@ -19,7 +19,12 @@ import { mkdirSync } from 'node:fs';
 
 // Forward slashes on purpose: Node accepts them on Windows, and a backslash
 // path in a single-quoted string silently loses every separator to escaping.
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const CHROME_PATHS = {
+  win32: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  darwin: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  linux: '/usr/bin/google-chrome',
+};
+const CHROME = process.env.CHROME ?? CHROME_PATHS[process.platform];
 const URL = 'http://localhost:5320/';
 const OUT = process.argv[2] ?? '.';
 
@@ -30,16 +35,27 @@ const STATE = {
   compare: ['AAPL', 'NVDA', 'SAP.DE', 'RELIANCE.NS'],
   picks: ['AAPL', 'NVDA', 'SPY', 'SAP.DE'],
   holdings: [
-    { symbol: 'AAPL', shares: 25, cost: 181.4 },
-    { symbol: 'NVDA', shares: 40, cost: 96.2 },
-    { symbol: 'SPY', shares: 12, cost: 512 },
-    { symbol: 'SAP.DE', shares: 30, cost: 142.5 },
-    { symbol: 'RELIANCE.NS', shares: 120, cost: 1105 },
+    { symbol: 'AAPL', invested: 4535, fee: 1, buy: 181.4 },
+    { symbol: 'NVDA', invested: 3848, fee: 1, buy: 96.2 },
+    { symbol: 'SPY', invested: 6144, fee: 1, buy: 512 },
+    { symbol: 'SAP.DE', invested: 4275, fee: 1, buy: 142.5 },
+    { symbol: 'RELIANCE.NS', invested: 132600, fee: 20, buy: 1105 },
   ],
+  groups: [
+    { id: 'gus', name: 'US', symbols: ['SPY', 'AAPL', 'NVDA'] },
+    { id: 'geu', name: 'Europe', symbols: ['SAP.DE', 'BP.L'] },
+    { id: 'gin', name: 'India', symbols: ['RELIANCE.NS'] },
+  ],
+  activeGroup: null,
   theme: 'light',
 };
 
 const TABS = ['Detail', 'Compare', 'Portfolio', 'Projection', 'Allocation'];
+
+const SCROLL_TO = {
+  Portfolio: { selector: '.totals', last: true, above: 24 },
+  Allocation: { selector: '.alloc-grid', last: false, above: 360 },
+};
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 mkdirSync(OUT, { recursive: true });
@@ -47,6 +63,8 @@ mkdirSync(OUT, { recursive: true });
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: 'new',
+  timeout: 120_000,
+  userDataDir: process.env.CHROME_PROFILE,
   // 880 rather than 940: the company profile panel sits just below that line and
   // cannot load on localhost, so the frame ends before it.
   defaultViewport: { width: 1440, height: 880, deviceScaleFactor: 1.5 },
@@ -84,10 +102,39 @@ for (const tab of TABS) {
   // Projections fit a model per ticker and take the longest.
   await wait(tab === 'Detail' ? 5000 : 12000);
 
+  await page.evaluate((spot) => {
+    const found = spot ? [...document.querySelectorAll(spot.selector)] : [];
+    const target = spot?.last ? found.at(-1) : found[0];
+    window.scrollTo(0, target ? target.getBoundingClientRect().top + window.scrollY - spot.above : 0);
+  }, SCROLL_TO[tab] ?? null);
+  await wait(600);
+
   const file = `${OUT}/shot-${tab.toLowerCase()}.png`;
   await page.screenshot({ path: file, captureBeyondViewport: false });
   console.log(`  ${tab} -> ${file}`);
 }
+
+await page.evaluate(() => {
+  window.scrollTo(0, 0);
+  [...document.querySelectorAll('nav.views button')].find((b) => b.textContent.trim().startsWith('Detail'))?.click();
+  [...document.querySelectorAll('.group-chip')].find((b) => b.textContent.trim().startsWith('US'))?.click();
+});
+await wait(1500);
+await page.evaluate(() => {
+  [...document.querySelectorAll('.group-tools button')].find((b) => b.textContent.includes('Edit group'))?.click();
+});
+await wait(4000);
+await page.screenshot({ path: `${OUT}/shot-groups.png`, captureBeyondViewport: false });
+console.log(`  Groups -> ${OUT}/shot-groups.png`);
+
+await page.evaluate(() => {
+  [...document.querySelectorAll('.group-actions .primary-btn')].find((b) => b.textContent.includes('Done'))?.click();
+  [...document.querySelectorAll('.group-chip')].find((b) => b.textContent.trim().startsWith('All'))?.click();
+  document.querySelector('.views-backup')?.click();
+});
+await wait(1500);
+await page.screenshot({ path: `${OUT}/shot-backup.png`, captureBeyondViewport: false });
+console.log(`  Backup -> ${OUT}/shot-backup.png`);
 
 await browser.close();
 console.log('done');
